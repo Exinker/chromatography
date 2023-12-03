@@ -1,0 +1,13 @@
+openpyxl
+tqdm
+xlwt
+
+matplotlib
+numpy
+pandas
+scipy
+
+jupyter
+
+vmk_spectrum2
+vmk_spectrum2_wrapper
