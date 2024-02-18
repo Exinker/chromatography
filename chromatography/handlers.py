@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from libspectrum2_wrapper.alias import Array
+from vmk_spectrum2_wrapper.typing import Array
 
 
 def none(data: Array[int]) -> Array[int]:
@@ -59,4 +59,3 @@ def handle_absorbance_signal(data: Array[float], factor: int, dark_data: Array[f
     data = np.log10(base_data / data)
 
     return data
-

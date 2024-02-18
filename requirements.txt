@@ -1,13 +1,9 @@
-openpyxl
-tqdm
-xlwt
-
 matplotlib
 numpy
 pandas
-scipy
+tqdm
 
 jupyter
 
 vmk_spectrum2
-vmk_spectrum2_wrapper
+vmk_spectrum2_wrapper @ git+https://github.com/Exinker/vmk_spectrum2_wrapper

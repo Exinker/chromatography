@@ -1,14 +1,22 @@
-env/
+.gitignore
 
+.git/
 __pycache__/
-*/__pycache__/
-.ipynb_checkpoints/
+.mypy_cache/
+.pytest_cache/
+.vscode/
+*.egg-info/
 
+env/
+build/
 data/
-.env
-.wl
-*.whl
-
 .*/
+
+*.in
+*.whl
+*.wl
+
 .*.py
 .*.ipynb
+.*.json
+.*.ini

@@ -1,10 +1,11 @@
 # Chromatography
 
-**Chromatography** - программа управления спектрометром "**Колибри-2**", регистрации выходных сигналов устройства (спектров эмиссии) и расчета сигналов поглощения.
+**Chromatography** - приложение для регистрации хроматограмм на малогабаритном спектрометре [Колибри-2](https://www.vmk.ru/product/spektrometry/kolibri-2_-_malogabaritnyy_mnogokanalnyy_spektrome.html) с одним линейным детектором (БЛПП-2000) с использованием библиотеки `vmk_spectrum2`.'
+
 
 ## Author Information:
 Павел Ващенко (vaschenko@vmk.ru)
-[ВМК-Оптоэлектроника](https://www.vmk.ru/), г. Новосибирск 2023 г.
+[ВМК-Оптоэлектроника](https://www.vmk.ru/), г. Новосибирск 2024 г.
 
 
 ## Installation

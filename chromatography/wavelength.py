@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from libspectrum2_wrapper.alias import Array, NanoMeter, Number
+from vmk_spectrum2_wrapper.typing import Array, NanoMeter, Number
 
 from .handlers import reduce_resolution
 

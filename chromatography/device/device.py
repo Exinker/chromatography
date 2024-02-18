@@ -1,150 +1,41 @@
 import os
 import time
-from decimal import Decimal
 from functools import partial
 from typing import Callable
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
 from IPython import display
 from tqdm import tqdm
 
-from libspectrum2_wrapper.alias import Array, Hz, MilliSecond, Number, Second
-from libspectrum2_wrapper.device import Device, DeviceEthernetConfig
-from libspectrum2_wrapper.storage import DeviceStorage, BufferDeviceStorage
+from vmk_spectrum2_wrapper.typing import Array, Second
+from vmk_spectrum2_wrapper.device import Device as _Device, DeviceEthernetConfig as _DeviceEthernetConfig
+from vmk_spectrum2_wrapper.storage import BufferDeviceStorage
 
-from .analyte import Channels, Channel, Ratio, handle_analyte_signal
-from .handlers import handle_dark_data, handle_base_data, handle_absorbance_signal
-from .wavelength import WavelengthCalibration
-
+from chromatography.analyte import Channels, Channel, Ratio, handle_analyte_signal
+from chromatography.handlers import handle_dark_data, handle_base_data, handle_absorbance_signal
+from chromatography.wavelength import WavelengthCalibration
+from .config import DeviceConfig
+from .storage import DeviceStorage
 
 CMAP = plt.get_cmap("tab10")
 
 
-class ChromDeviceStorage(BufferDeviceStorage):
-
-    def __init__(self, buffer_size: int = 1, buffer_handler: Callable[[Array], Array] | None = None, signal_handler: Callable[[Array], Array] | None = None) -> None:
-        super().__init__(buffer_size, buffer_handler)
-
-        self._signal_handler = signal_handler
-        self._signal = []
-
-    # --------        data        --------
-    @property
-    def data(self) -> Array[int]:
-        return np.array(self._data)
-
-    @property
-    def signal(self) -> Array[int]:
-        return np.array(self._signal)
-
-    def put(self, frame: Array[int]) -> None:
-        """Добавить новый кадр `frame`."""
-
-        # time
-        time_at = time.perf_counter()
-
-        if self._started_at is None:
-            self._started_at = time_at
-
-        self._finished_at = time_at
-
-        # data
-        if self.scale:
-            frame = self.scale * frame
-
-        if self.buffer_size == 1:  # если буфер размера `1`, то данные отправляюится сразу в `data`
-
-            # buffer
-            buffer = np.array(frame)
-            if self.buffer_handler:
-                buffer = self.buffer_handler(buffer)
-
-            # data
-            self._data.append(buffer)
-            self._signal.append(
-                self._signal_handler(buffer)
-            )
-
-        else:
-            self._buffer.append(frame)
-
-            if len(self.buffer) == self.buffer_size:  # если буфер заполнен, то ранные обрабатываются `handler`, передаются в `data` и буфер очищается
-
-                try:
-                    # buffer
-                    buffer = np.array(self.buffer)
-                    if self.buffer_handler:
-                        buffer = self.buffer_handler(buffer)
-
-                    # data
-                    self._data.append(buffer)
-                    self._signal.append(
-                        self._signal_handler(buffer)
-                    )
-
-                finally:
-                    self._buffer.clear()
-
-
-class ChromConfig:
-
-    def __init__(self, omega: Hz, tau: MilliSecond = .4, factor: int = 8) -> None:
-        assert 0.1 <= omega <= 100, 'Частота регистрации `omega` должна лежать в диапазоне [0.1; 100] Гц!'
-        assert int(np.round(1000 * tau).astype(int)) % 100 == 0, 'Базовое время экспозиции `tau` должно задано с точностью до 0.1 мс!'
-        assert .4 <= tau <= .6, 'Базовое время экспозиции `tau` должно лежать в диапазоне [0.4; 0.6] мс!'
-        assert isinstance(factor, int), '`factor` должен быть целым числом!'
-        assert 2048 % factor == 0, '`factor` должен быть кратен количеству фотоячеек!'  # FIXME: remove 2048!
-
-        self._omega = omega
-        self._tau = tau
-        self._buffer_size = self.calculate_buffer_size(omega=omega, tau=tau)
-        self._factor = factor
-
-    @property
-    def omega(self) -> float:
-        """Частота регистрации (Гц)."""
-        return self._omega
-
-    @property
-    def tau(self) -> MilliSecond:
-        """Базовое время экспозиции (мс)."""
-        return self._tau
-
-    @property
-    def buffer_size(self) -> int:
-        """Количество накоплений во времени."""
-        return self._buffer_size
-
-    @property
-    def factor(self) -> Number:
-        """Количество накоплений в пространстве."""
-        return self._factor
-
-    @staticmethod
-    def calculate_buffer_size(omega: Hz, tau: MilliSecond) -> int:
-        """Рассчитать размер буфера."""
-        assert Decimal(1e+6) / Decimal(omega) % Decimal(int(1000*tau)) == 0, 'Частота регистрации `omega` должна быть кратна базовому времени экспозиции `tau`!'
-
-        return int(Decimal(1e+6) / Decimal(omega) / Decimal(int(1000*tau)))
-
-
-class Chrom:
+class Device:
     """Интерфейс для работы с устройством."""
 
-    def __init__(self, config: ChromConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
 
         # config
         self.config = config
 
         # device
-        self.device = Device(
+        self.device = _Device(
             storage=BufferDeviceStorage(),
         )
         self.device.create(
-            config=DeviceEthernetConfig(
+            config=_DeviceEthernetConfig(
                 ip='10.116.220.2',
             ),
         )
@@ -182,7 +73,7 @@ class Chrom:
 
         # show
         if show:
-            figure, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
+            figure, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
             x = np.arange(1, len(data)+1)
             y = data.reshape(-1,)
@@ -246,7 +137,7 @@ class Chrom:
                     display.clear_output(wait=True)
 
                     #
-                    figure, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
+                    figure, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
                     x = np.arange(1, len(data)+1) if self.wavelength is None else self.wavelength
                     y = data.reshape(-1,)
@@ -255,7 +146,7 @@ class Chrom:
                         color='black', linestyle='-',
                     )
 
-                    plt.xlabel('number' if self.wavelength is None else '$\lambda$, nm')
+                    plt.xlabel('number' if self.wavelength is None else r'$\lambda$, nm')
                     plt.ylabel('$I_{0}$, %')
 
                     plt.grid(color='grey', linestyle=':')
@@ -266,7 +157,7 @@ class Chrom:
                 if not recycle:
                     break
 
-        except KeyboardInterrupt as error:
+        except KeyboardInterrupt:
             pass
 
         finally:
@@ -321,12 +212,12 @@ class Chrom:
         n_frames = n_frames or self.calculate_n_frames(duration)
         assert n_frames or duration, 'Укажите время измерения `duration` или количество накоплений `n_frames`'
 
-        n_frames = (n_frames//config.buffer_size) * config.buffer_size  # FIXME: 
+        n_frames = (n_frames//config.buffer_size) * config.buffer_size  # FIXME:
         assert n_frames < 2**24, 'Общее количество накполений `n_frames` должно быть менее 2**24!'
 
         # setup
         self.device.set_storage(
-            storage=ChromDeviceStorage(
+            storage=DeviceStorage(
                 buffer_size=config.buffer_size,
                 buffer_handler=partial(handle_absorbance_signal, factor=config.factor, dark_data=self.dark_data, base_data=self._base_data),
                 signal_handler=partial(handle_analyte_signal, channels=channels),
@@ -351,14 +242,14 @@ class Chrom:
     def calculate_signal(self, absorbance: Array[float], channels: Channels, save: bool = True) -> Array[float]:
         """"""
         config = self.config
-        
+
         n_counts, n_numbers = absorbance.shape
         n_channels = len(channels)
 
         # signal
         signal = np.zeros((n_counts, n_channels))
         for t in range(n_counts):
-            signal[t,:] = handle_analyte_signal(absorbance[t, :], channels=channels)
+            signal[t, :] = handle_analyte_signal(absorbance[t, :], channels=channels)
 
         # save
         if save:
@@ -417,7 +308,7 @@ class Chrom:
                     display.clear_output(wait=True)
 
                     #
-                    figure, (ax_left, ax_right) = plt.subplots(nrows=1, ncols=2, figsize=(12,4))
+                    figure, (ax_left, ax_right) = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
 
                     # ax_left
                     plt.sca(ax_left)
@@ -450,7 +341,7 @@ class Chrom:
 
                     content = [
                         fr'$\omega$: {config.omega} [Hz]',
-                        fr'',
+                        '',
                         fr'$\delta{{t}}$: {storage.buffer_size}',
                         fr'$\delta{{n}}$: {config.factor}',
                     ]
@@ -462,7 +353,7 @@ class Chrom:
                         transform=plt.gca().transAxes,
                     )
 
-                    plt.xlabel('number' if self.wavelength is None else '$\lambda$, nm')
+                    plt.xlabel('number' if self.wavelength is None else r'$\lambda$, nm')
                     plt.ylabel('$A$')
 
                     plt.grid(color='grey', linestyle=':')

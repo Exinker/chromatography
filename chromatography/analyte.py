@@ -1,10 +1,8 @@
-
 import numpy as np
 
-from libspectrum2_wrapper.alias import Array, NanoMeter, Number
+from vmk_spectrum2_wrapper.typing import Array, NanoMeter, Number
 
 from .wavelength import WavelengthCalibration
-
 
 
 class Channel:
@@ -27,6 +25,7 @@ class Channel:
 
         return self._bounds
 
+    # --------        private        --------
     def __repr__(self) -> str:
         cls = self.__class__
 
@@ -42,6 +41,7 @@ class Ratio:
         self.items = items
         self.threshold = threshold
 
+    # --------        private        --------
     def __str__(self) -> str:
         left, right = self.items
 
@@ -68,7 +68,6 @@ class Channels:
 
             self._items.append(item)
 
-    # --------        ratios        --------
     @property
     def ratios(self) -> list[Ratio]:
         return self._ratios
@@ -85,7 +84,7 @@ class Channels:
 
         return self
 
-    # --------                --------
+    # --------        private        --------
     def __getitem__(self, i: int) -> Channel:
         return self._items[i]
 
